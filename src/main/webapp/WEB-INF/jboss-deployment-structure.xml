@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-deployment-structure xmlns="urn:jboss:deployment-structure:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <deployment>
+        <dependencies>
+            <module name="org.apache.cxf.impl" export="true"/>
+            <module name="org.apache.xalan" export="true"/>
+            <module name="org.bouncycastle" export="true"/>
+            <module name="org.apache.httpcomponents" export="true"/>
+            <module name="ru.inovus.egisz.medorg" export="true"/>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>

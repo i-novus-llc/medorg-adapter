@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:tns="http://emu.callback.mis.service.nr.eu.rt.ru/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:ns1="http://schemas.xmlsoap.org/soap/http"
+                  name="callback" targetNamespace="http://emu.callback.mis.service.nr.eu.rt.ru/">
+    <wsdl:types>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://emu.callback.mis.service.nr.eu.rt.ru/"
+                   elementFormDefault="unqualified" targetNamespace="http://emu.callback.mis.service.nr.eu.rt.ru/"
+                   version="1.0">
+            <xs:element name="sendResponse" type="tns:sendResponse"/>
+            <xs:element name="sendResponseResponse" type="tns:sendResponseResponse"/>
+            <xs:complexType name="sendResponse">
+                <xs:sequence>
+                    <xs:element name="id" type="xs:string"/>
+                    <xs:element name="oid" type="xs:string"/>
+                    <xs:element name="response" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="sendResponseResponse">
+                <xs:sequence>
+                    <xs:element name="status" type="xs:int"/>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+    </wsdl:types>
+    <wsdl:message name="sendResponse">
+        <wsdl:part element="tns:sendResponse" name="parameters">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="sendResponseResponse">
+        <wsdl:part element="tns:sendResponseResponse" name="parameters">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="Callback">
+        <wsdl:operation name="sendResponse">
+            <wsdl:input message="tns:sendResponse" name="sendResponse">
+            </wsdl:input>
+            <wsdl:output message="tns:sendResponseResponse" name="sendResponseResponse">
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="callbackSoapBinding" type="tns:Callback">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="sendResponse">
+            <soap:operation soapAction="sendResponse" style="document"/>
+            <wsdl:input name="sendResponse">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="sendResponseResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="callback">
+        <wsdl:port binding="tns:callbackSoapBinding" name="CallbackPort">
+            <soap:address location="http://localhost:8080/medorg-adapter/callback"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

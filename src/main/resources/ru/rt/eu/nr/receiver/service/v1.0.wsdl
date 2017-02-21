@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='UTF-8'?><wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://receiver.service.nr.eu.rt.ru/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:ns1="http://schemas.xmlsoap.org/soap/http" name="receiver" targetNamespace="http://receiver.service.nr.eu.rt.ru/">
+    <wsdl:types>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://receiver.service.nr.eu.rt.ru/" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://receiver.service.nr.eu.rt.ru/">
+            <xs:element name="sendDocument" type="tns:sendDocument"/>
+            <xs:element name="sendDocumentResponse" type="tns:sendDocumentResponse"/>
+            <xs:complexType name="sendDocument">
+                <xs:sequence>
+                    <xs:element name="oid" type="xs:string"/>
+                    <xs:element name="service" type="xs:string"/>
+                    <xs:element name="document" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="sendDocumentResponse">
+                <xs:sequence>
+                    <xs:element name="id" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="ValidationFault" type="tns:ValidationFault"/>
+            <xs:complexType name="ValidationFault">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="AuthorizationFault" type="tns:AuthorizationFault"/>
+            <xs:complexType name="AuthorizationFault">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="SystemFault" type="tns:SystemFault"/>
+            <xs:complexType name="SystemFault">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+    </wsdl:types>
+    <wsdl:message name="ValidationFaultException">
+        <wsdl:part element="tns:ValidationFault" name="ValidationFaultException">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="sendDocument">
+        <wsdl:part element="tns:sendDocument" name="parameters">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="sendDocumentResponse">
+        <wsdl:part element="tns:sendDocumentResponse" name="parameters">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="AuthorizationFaultException">
+        <wsdl:part element="tns:AuthorizationFault" name="AuthorizationFaultException">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="SystemFaultException">
+        <wsdl:part element="tns:SystemFault" name="SystemFaultException">
+        </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="Receiver">
+        <wsdl:operation name="sendDocument">
+            <wsdl:input message="tns:sendDocument" name="sendDocument">
+            </wsdl:input>
+            <wsdl:output message="tns:sendDocumentResponse" name="sendDocumentResponse">
+            </wsdl:output>
+            <wsdl:fault message="tns:AuthorizationFaultException" name="AuthorizationFaultException">
+            </wsdl:fault>
+            <wsdl:fault message="tns:SystemFaultException" name="SystemFaultException">
+            </wsdl:fault>
+            <wsdl:fault message="tns:ValidationFaultException" name="ValidationFaultException">
+            </wsdl:fault>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="receiverSoapBinding" type="tns:Receiver">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="sendDocument">
+            <soap:operation soapAction="sendDocument" style="document"/>
+            <wsdl:input name="sendDocument">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="sendDocumentResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+            <wsdl:fault name="AuthorizationFaultException">
+                <soap:fault name="AuthorizationFaultException" use="literal"/>
+            </wsdl:fault>
+            <wsdl:fault name="SystemFaultException">
+                <soap:fault name="SystemFaultException" use="literal"/>
+            </wsdl:fault>
+            <wsdl:fault name="ValidationFaultException">
+                <soap:fault name="ValidationFaultException" use="literal"/>
+            </wsdl:fault>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="receiver">
+        <wsdl:port binding="tns:receiverSoapBinding" name="ReceiverPort">
+            <soap:address location="проставляется из настройки egiszEndpointURL medorg-adapter.properties wildfly-модуля ru.inovus.egisz.medorg"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>
