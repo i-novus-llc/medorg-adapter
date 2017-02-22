@@ -33,8 +33,8 @@ public class XmlHelper {
      */
     public static String elementToString(final Element element, final Charset xmlEncoding) {
 
-        StringWriter writer = null;
-        Transformer tf = null;
+        StringWriter writer;
+        Transformer tf;
 
         try {
             tf = TransformerFactory.newInstance().newTransformer();
@@ -105,15 +105,14 @@ public class XmlHelper {
 
     public static String instanceToString(final Object object, Class... classesToBeBound) {
 
-        String result = null;
-
-        JAXBContext context = null;
+        String result;
+        JAXBContext context;
 
         try {
 
             context = JAXBContext.newInstance(classesToBeBound);
 
-            Marshaller marshaller = null;
+            Marshaller marshaller;
 
             marshaller = context.createMarshaller();
 

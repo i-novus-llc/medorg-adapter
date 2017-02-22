@@ -8,18 +8,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 public class ExceptionHelper {
 
     /**
-     * Возвращает stackTrace исключения
-     * @param throwable объект исключения
-     * @return
-     */
-    public static String getStackTrace(Throwable throwable)  {
-
-        Throwable cause = ExceptionUtils.getRootCause(throwable);
-
-        return ExceptionUtils.getStackTrace(cause == null ? throwable: cause);
-    }
-
-    /**
      * Возвращает текст сообщения исключения, при отсутствии возвращается stackTrace исключения
      * @param throwable объект исключения
      * @return

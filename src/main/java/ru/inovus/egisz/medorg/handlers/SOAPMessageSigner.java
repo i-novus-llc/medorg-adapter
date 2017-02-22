@@ -101,46 +101,50 @@ public class SOAPMessageSigner implements SOAPHandler<SOAPMessageContext> {
                 SOAPElement messageIDElem = (SOAPElement) XmlHelper.selectSingleNode(soapHeader, "//*[local-name()='MessageID']");
 
                 context.put("MessageID", messageIDElem.getTextContent());
-
-            } else if(messageType == SOAPMessageType.SEND_RESPONSE_RESPONSE) {
-
-                informationSystemName = (String)context.get("informationSystemName");
-
-                pemCertificate = (String)context.get("pemCertificate");
-
-                pemPrivateKey = (String)context.get("pemPrivateKey");
-
-                String messageID = (String)context.get("MessageID");
-
-                SOAPElement relatesToElem = soapHeader.addChildElement(new QName(WWW_W3_ORG_2005_08_ADDRESSING, "RelatesTo", "wsa"));
-                relatesToElem.setTextContent(messageID);
             }
 
-            soapEnvelope.setAttribute("xmlns:ds", WWW_W3_ORG_2000_09_XMLDSIG);
-            soapEnvelope.setAttribute("xmlns:wsa", WWW_W3_ORG_2005_08_ADDRESSING);
-            soapEnvelope.setAttribute("xmlns:wsse", OASIS_200401_WSS_WSSECURITY_SECEXT);
-            soapEnvelope.setAttribute("xmlns:wsu", OASIS_200401_WSS_WSSECURITY_UTILITY);
-            soapEnvelope.setAttribute("xmlns:egisz", ROSMINZDRAV_NAMESPACE_URI);
-            soapBody.setAttribute("wsu:Id", "body");
+            if (isOutbound != null && isOutbound) {
 
-            /* добавление элемента для указания идентификатора сообщения */
-            addingMessageIdElement(soapHeader);
+                soapEnvelope.setAttribute("xmlns:ds", WWW_W3_ORG_2000_09_XMLDSIG);
+                soapEnvelope.setAttribute("xmlns:wsa", WWW_W3_ORG_2005_08_ADDRESSING);
+                soapEnvelope.setAttribute("xmlns:wsse", OASIS_200401_WSS_WSSECURITY_SECEXT);
+                soapEnvelope.setAttribute("xmlns:wsu", OASIS_200401_WSS_WSSECURITY_UTILITY);
+                soapEnvelope.setAttribute("xmlns:egisz", ROSMINZDRAV_NAMESPACE_URI);
+                soapBody.setAttribute("wsu:Id", "body");
 
-            /* добавление элемента для указания идентификатора системы */
-            addingClientEntityIdElement(soapHeader);
+                if(messageType == SOAPMessageType.SEND_RESPONSE_RESPONSE) {
 
-            /* добавление блока элементов для указания ЭП */
-            addingSignatureElements(soapEnvelope, soapHeader);
+                    informationSystemName = (String)context.get("informationSystemName");
 
-            // Делаем такое преобразование, чтобы не поломался в последующем хэш для Body
-            resetSOAPPartContent(message);
+                    pemCertificate = (String)context.get("pemCertificate");
 
-            /* проставление в элементе DigestValue расчитанную хеш-сумму блока с бизнес-данными запроса */
-            SOAPElement digestValueElem = (SOAPElement) XmlHelper.selectSingleNode(message.getSOAPHeader(), "//*[local-name()='DigestValue']");
-            genericDigestValue(message.getSOAPBody(), digestValueElem);
+                    pemPrivateKey = (String)context.get("pemPrivateKey");
 
-            /* подписание ЭП-ОВ */
-            signDigestValue(message.getSOAPBody());
+                    String messageID = (String)context.get("MessageID");
+
+                    SOAPElement relatesToElem = soapHeader.addChildElement(new QName(WWW_W3_ORG_2005_08_ADDRESSING, "RelatesTo", "wsa"));
+                    relatesToElem.setTextContent(messageID);
+                }
+
+                /* добавление элемента для указания идентификатора сообщения */
+                addingMessageIdElement(soapHeader);
+
+                /* добавление элемента для указания идентификатора системы */
+                addingClientEntityIdElement(soapHeader);
+
+                /* добавление блока элементов для указания ЭП */
+                addingSignatureElements(soapEnvelope, soapHeader);
+
+                // Делаем такое преобразование, чтобы не поломался в последующем хэш для Body
+                resetSOAPPartContent(message);
+
+                /* проставление в элементе DigestValue расчитанную хеш-сумму блока с бизнес-данными запроса */
+                SOAPElement digestValueElem = (SOAPElement) XmlHelper.selectSingleNode(message.getSOAPHeader(), "//*[local-name()='DigestValue']");
+                genericDigestValue(message.getSOAPBody(), digestValueElem);
+
+                /* подписание ЭП-ОВ */
+                signDigestValue(message.getSOAPBody());
+            }
 
             if (logger.isDebugEnabled()) {
 

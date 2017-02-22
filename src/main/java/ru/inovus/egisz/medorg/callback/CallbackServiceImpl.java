@@ -3,6 +3,7 @@ package ru.inovus.egisz.medorg.callback;
 import org.apache.cxf.annotations.SchemaValidation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.inovus.egisz.medorg.exceptions.ConsumerHttpBadGatewayException;
 import ru.inovus.egisz.medorg.exceptions.NotDeliveredException;
 import ru.inovus.egisz.medorg.rest.RestCallbackCommand;
 import ru.inovus.egisz.medorg.rest.XmlResultContent;
@@ -60,62 +61,94 @@ public class CallbackServiceImpl implements Callback {
 
         int result = 0; //со стороны ИПС просили всегда возвращать 0
 
-        try {
+        logger.debug("MEDORG. Предпринимается попытка выполнения обработки результирующего сообщения ЕГИСЗ ИПС для id принятого сообщения {}: oid={}, response={}", id, oid, response);
 
-            logger.debug("MEDORG. Предпринимается попытка выполнения обработки результирующего сообщения ЕГИСЗ ИПС для id принятого сообщения {}", id);
+        final RestCallbackCommand command = getRestCallbackCommand(id);
 
-            String restCallbackUrl = getRestCallbackUrl(id);
+        if (command != null) {
 
-            logger.debug("MEDORG. Извлечено из очереди queue/ReplierQueue restCallbackUrl: {}  для id принятого сообщения {}", restCallbackUrl, id);
+            final String restCallbackUrl = command.getCallbackUrl();
+
+            final String authorizedUserName = command.getAuthorizedUserName();
+
+            logger.debug("MEDORG. Извлечено из очереди queue/RestCallbackQueue привязка restCallbackUrl {} к id принятого сообщения {} для потребителя {}", restCallbackUrl, id, authorizedUserName);
 
             final String data = getResultData(id, oid, response);
 
-            logger.debug("MEDORG. Подготовлено к отправке потребителю {} результирующее сообщение: {}", restCallbackUrl, response);
+            logger.debug("MEDORG. Подготовлено к отправке на сервис {} потребителя {} результирующее сообщение: {}", restCallbackUrl, authorizedUserName, data);
 
-            int responseCode = HttpRequester.post(restCallbackUrl, data);
-
-            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_ACCEPTED) {
-
-                logger.debug("MEDORG. Доставлено потребителю результирующее сообщение по адресу {}. Тело запроса: {}. HTTP-статус ответа: {}.", restCallbackUrl, data, responseCode);
-
-            } else {
-
-                throw new NotDeliveredException("HTTP-статус полученного сообщения от потребителя: " + responseCode);
+            if(data != null) {
+               responseDelivering(restCallbackUrl, authorizedUserName, data);
             }
-
-        } catch (Exception ex) {
-
-            logger.error("MEDORG. Ошибка при попытке передачи в обработку результирующего сообщения ЕГИСЗ ИПС для id принятого сообщения {}: oid={}, response={}", id, oid, response, ex);
         }
 
         return result;
     }
 
     /**
-     * Возвращает restCallbackUrl для id принятого сообщения ЕГИСЗ ИПС
-     *
-     * @param egiszRespMessageId id принятого сообщения ЕГИСЗ ИПС
-     * @throws RuntimeException
-     * @return
+     * Доставка результирующего сообщения ЕГИСЗ ИПС на сервис потребителя
+     * @param restCallbackUrl     url - для отправки результата обработки
+     * @param authorizedUserName  логин авторизированного пользователя
+     * @param data                строка результирующего сообщения подготовленного к отправке на сервис потребителя
+     * @throws ConsumerHttpBadGatewayException
      */
-    private String getRestCallbackUrl(final String egiszRespMessageId)  {
-
-        final Message jmsMessage = jmsMessageExtractor.getMessage(egiszRespMessageId, restCallbackQueue);
-
-        if(jmsMessage == null){
-            throw new RuntimeException("Не удалось найти привязку к restCallbackUrl в очереди queue/RestCallbackQueue для id принятого сообщения ЕГИСЗ ИПС: " + egiszRespMessageId);
-        }
-
-        String result;
+    private void responseDelivering(String restCallbackUrl, String authorizedUserName, String data) {
 
         try {
 
-            RestCallbackCommand command = jmsMessage.getBody(RestCallbackCommand.class);
+            int responseCode;
 
-            result = command.getCallbackUrl();
+            try {
 
-        } catch (JMSException e) {
-            throw new RuntimeException("Не удалось извлечь restCallbackUrl из JMS-сообщения queue/RestCallbackQueue для id принятого сообщения ЕГИСЗ ИПС: "+ egiszRespMessageId +".", e);
+                responseCode = HttpRequester.post(restCallbackUrl, data);
+
+            } catch (Exception ex) {
+                throw new NotDeliveredException(ex);
+            }
+
+            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_ACCEPTED) {
+
+                logger.debug("MEDORG. Доставлено на сервис {} потребителя {} результирующее сообщение: {}. HTTP-статус ответа: {}.", restCallbackUrl, authorizedUserName, data, responseCode);
+
+            } else if (responseCode == HttpURLConnection.HTTP_BAD_GATEWAY) {
+
+                throw new ConsumerHttpBadGatewayException("MEDORG. В связи с проблемой работы сервиса " + restCallbackUrl + " (HTTP-статус 502 Bad Gateway) потребителя " + authorizedUserName + ", не удалось доставить результирующее сообщение ЕГИСЗ ИПС: " + data);
+
+            } else {
+
+                throw new NotDeliveredException("HTTP-статус полученного сообщения от потребителя: " + responseCode);
+            }
+
+        } catch (NotDeliveredException ex) {
+
+            logger.error("MEDORG. Не удалось доставить на сервис {} потребителя {} результирующее сообщение: {}.", restCallbackUrl, authorizedUserName, data, ex);
+        }
+    }
+
+    /**
+     * Возвращает restCallbackUrl для id принятого сообщения ЕГИСЗ ИПС
+     *
+     * @param egiszRespMessageId id принятого сообщения ЕГИСЗ ИПС
+     * @return
+     */
+    private RestCallbackCommand getRestCallbackCommand(final String egiszRespMessageId) {
+
+        RestCallbackCommand result = null;
+
+        final Message jmsMessage = jmsMessageExtractor.getMessage(egiszRespMessageId, restCallbackQueue);
+
+        if (jmsMessage != null) {
+
+            try {
+
+                return jmsMessage.getBody(RestCallbackCommand.class);
+
+            } catch (JMSException e) {
+                logger.error("MEDORG. Не удалось извлечь restCallbackUrl из JMS-сообщения queue/RestCallbackQueue для id принятого сообщения ЕГИСЗ ИПС {}", egiszRespMessageId);
+            }
+
+        } else {
+            logger.warn("MEDORG. Не удалось найти привязку к restCallbackUrl в очереди queue/RestCallbackQueue для id принятого сообщения ЕГИСЗ ИПС {}", egiszRespMessageId);
         }
 
         return result;
@@ -128,18 +161,21 @@ public class CallbackServiceImpl implements Callback {
      * @param oid      идентификатор базового объекта
      * @param response документ, кодированный в base64, который содержит результат обработки сообщения
      * @return
-     * @throws RuntimeException
      */
     private String getResultData(final String egiszRespMessageId, String oid, String response) {
 
+        String result = null;
+
+        final XmlResultContent content = new XmlResultContent(egiszRespMessageId, oid, response);
+
         try {
 
-            final XmlResultContent content = new XmlResultContent(egiszRespMessageId, oid, response);
-
-            return XmlHelper.instanceToString(content, XmlResultContent.class);
+            result = XmlHelper.instanceToString(content, XmlResultContent.class);
 
         } catch (Exception ex) {
-            throw new RuntimeException(ex);
+            logger.error("MEDORG. Не удалось преобразовать строку response в объект XmlResultContent для id принятого сообщения ЕГИСЗ ИПС {}: oid={}, response={}", egiszRespMessageId, oid, response, ex);
         }
+
+        return result;
     }
 }

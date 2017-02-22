@@ -8,4 +8,8 @@ public class NotDeliveredException extends Exception {
     public NotDeliveredException(String message) {
         super(message);
     }
+
+    public NotDeliveredException(Throwable cause) {
+        super(cause);
+    }
 }
