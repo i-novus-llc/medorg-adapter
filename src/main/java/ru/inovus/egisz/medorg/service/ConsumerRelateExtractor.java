@@ -20,4 +20,8 @@ public class ConsumerRelateExtractor {
     public static ConsumerRelate extractInfo(final String id){
         return consumerRelateExtractor.extractInfo(id);
     }
+
+    public static ConsumerRelate extractInfoByUsername(final String username){
+        return consumerRelateExtractor.extractInfoByUsername(username);
+    }
 }

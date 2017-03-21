@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import ru.inovus.egisz.medorg.exceptions.EgiszFaultException;
 import ru.inovus.egisz.medorg.exceptions.NotReceivedIdException;
 import ru.inovus.egisz.medorg.handlers.SOAPMessageSigner;
-import ru.inovus.egisz.medorg.rest.RestCallbackRegistrator;
+import ru.inovus.egisz.medorg.rest.RestCallbackCommand;
 import ru.inovus.egisz.medorg.rest.XmlAcknowledgeContent;
 import ru.inovus.egisz.medorg.rest.XmlFailContent;
 import ru.inovus.egisz.medorg.util.ConfigHelper;
@@ -41,7 +41,7 @@ public class MessageExchangeBean {
     private static final Logger logger = LoggerFactory.getLogger(MessageExchangeBean.class);
 
     @EJB
-    private RestCallbackRegistrator restCallbackRegistrator;
+    private MessageInfoService messageInfoService;
 
     private final static QName SERVICE_QNAME = new QName("http://receiver.service.nr.eu.rt.ru/", "receiver");
 
@@ -63,13 +63,13 @@ public class MessageExchangeBean {
     /**
      * Отправляет SendDocument-запрос в ЕГИСЗ ИПС
      *
-     * @param asyncResponse       объект, который позволяет асинхронно отправлять ответ в другом потоке
-     * @param authorizedUserName  логин авторизированного пользователя
-     * @param ipsEndPoint         url-точки доступа к сервисам ЕГИСЗ ИПС
-     * @param oid                 идентификатор базового объекта
-     * @param service             название сервиса
-     * @param base64Document      строка XML-документа перекодированная в Base64
-     * @param restCallbackUrl     url - для отправки результата обработки
+     * @param asyncResponse      объект, который позволяет асинхронно отправлять ответ в другом потоке
+     * @param authorizedUserName логин авторизированного пользователя
+     * @param ipsEndPoint        url-точки доступа к сервисам ЕГИСЗ ИПС
+     * @param oid                идентификатор базового объекта
+     * @param service            название сервиса
+     * @param base64Document     строка XML-документа перекодированная в Base64
+     * @param restCallbackUrl    url - для отправки результата обработки
      */
     public void sendDocument(AsyncResponse asyncResponse, final String authorizedUserName, final String ipsEndPoint, final String oid, final String service, final String base64Document, final String restCallbackUrl) {
 
@@ -87,19 +87,19 @@ public class MessageExchangeBean {
                 SOAPConfigurator.сontentLengthActivate(port);
 
                 /* извлекаем из настроек название ИС */
-                String informationSystemName = ConfigHelper.getAppProperty(authorizedUserName+".informationSystemName");
+                String informationSystemName = ConfigHelper.getAppProperty(authorizedUserName + ".informationSystemName");
 
                 /* извлекаем из настроек PEM-сертификата ЭП */
-                String pemCertificate = ConfigHelper.getAppProperty(authorizedUserName+".pemCertificate");
+                String pemCertificate = ConfigHelper.getAppProperty(authorizedUserName + ".pemCertificate");
 
                 /* извлекаем из настроек PEM-закрытого ключа ЭП */
-                String pemPrivateKey = ConfigHelper.getAppProperty(authorizedUserName+".pemPrivateKey");
+                String pemPrivateKey = ConfigHelper.getAppProperty(authorizedUserName + ".pemPrivateKey");
 
                 /* подключение SOAPHandler-а для подписи SOAP-сообщений, отправляемых на сервисы ЕГИСЗ ИПС */
                 SOAPConfigurator.bindingSOAPHandler(port, new SOAPMessageSigner(informationSystemName, pemCertificate, pemPrivateKey), false);
 
                 /* добавляем в заголовок элементы */
-                List<Header> headersList = new ArrayList<Header>();
+                List<Header> headersList = new ArrayList<>();
 
                 JAXBDataBinding jaxbDataBinding = JAXBHelper.getJAXBDataBinding();
 
@@ -110,11 +110,12 @@ public class MessageExchangeBean {
 
                 final String egiszRespMessageId = port.sendDocument(oid, service, base64Document);
 
-                if(StringUtils.isBlank(egiszRespMessageId)){
+                if (StringUtils.isBlank(egiszRespMessageId)) {
 
-                    throw new NotReceivedIdException("Не получен id принятого сообщения из ЕГИСЗ ИПС для SendDocument-запроса: authorizedUserName="+ authorizedUserName +", endPoint="+ ipsEndPoint +", oid="+ oid +", service="+ service +", document="+ base64Document);
+                    throw new NotReceivedIdException("Не получен id принятого сообщения из ЕГИСЗ ИПС для SendDocument-запроса: authorizedUserName=" + authorizedUserName + ", endPoint=" + ipsEndPoint + ", oid=" + oid + ", service=" + service + ", document=" + base64Document);
 
-                }else{
+                } else {
+                    messageInfoService.addMessage(egiszRespMessageId, new RestCallbackCommand(authorizedUserName, restCallbackUrl));
 
                     logger.debug("MEDORG. Получен id принятого сообщения {} из ЕГИСЗ ИПС для SendDocument-запроса: authorizedUserName={}, endPoint={}, oid={}, service={}, document={}", egiszRespMessageId, authorizedUserName, ipsEndPoint, oid, service, base64Document);
 
@@ -143,10 +144,7 @@ public class MessageExchangeBean {
                             .build();
 
                     asyncResponse.resume(response);
-
-                    /* регистрация привязки restCallbackUrl к id принятого сообщения ЕГИСЗ ИПС в очереди */
-                    restCallbackRegistrator.add(egiszRespMessageId, authorizedUserName, restCallbackUrl);
-                }
+               }
 
             } catch (SystemFaultException ex) {
 
@@ -191,8 +189,8 @@ public class MessageExchangeBean {
         }
     }
 
-    private void addHeaders(final Receiver port, final List<Header> headersList){
-        ((BindingProvider)port).getRequestContext().put(Header.HEADER_LIST, headersList);
+    private void addHeaders(final Receiver port, final List<Header> headersList) {
+        ((BindingProvider) port).getRequestContext().put(Header.HEADER_LIST, headersList);
     }
 
 }

@@ -1,5 +1,6 @@
 package ru.inovus.egisz.medorg.handlers;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.xml.security.c14n.Canonicalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,8 @@ import static ru.inovus.egisz.medorg.util.CryptoHelper.getSignature;
 public class SOAPMessageSigner implements SOAPHandler<SOAPMessageContext> {
 
     private static final Logger logger = LoggerFactory.getLogger(SOAPMessageSigner.class);
+
+    private static final String DEFAULT_USERNAME = "consumer";
 
     private static final String WWW_W3_ORG_2000_09_XMLDSIG = "http://www.w3.org/2000/09/xmldsig#";
     private static final String WWW_W3_ORG_2001_10_XML_EXC_C14N = "http://www.w3.org/2001/10/xml-exc-c14n#";
@@ -84,19 +87,30 @@ public class SOAPMessageSigner implements SOAPHandler<SOAPMessageContext> {
 
                 SOAPElement idElem = (SOAPElement) XmlHelper.selectSingleNode(soapBody, "//*[local-name()='id']");
 
-                ConsumerRelate consumerRelate = ConsumerRelateExtractor.extractInfo(idElem.getTextContent());
+                final String egiszRespMessageId = idElem.getTextContent();
 
-                informationSystemName = consumerRelate.getInformationSystemName();
+                context.put("egiszRespMessageId", egiszRespMessageId);
 
-                pemCertificate = consumerRelate.getPemCertificate();
+                ConsumerRelate consumerRelate = ConsumerRelateExtractor.extractInfo(egiszRespMessageId);
 
-                pemPrivateKey = consumerRelate.getPemPrivateKey();
+                if (consumerRelate == null) {
+                    consumerRelate = ConsumerRelateExtractor.extractInfoByUsername(DEFAULT_USERNAME);
+                }
 
-                context.put("informationSystemName", informationSystemName);
+                if (consumerRelate != null) {
 
-                context.put("pemCertificate", pemCertificate);
+                    informationSystemName = consumerRelate.getInformationSystemName();
 
-                context.put("pemPrivateKey", pemPrivateKey);
+                    pemCertificate = consumerRelate.getPemCertificate();
+
+                    pemPrivateKey = consumerRelate.getPemPrivateKey();
+
+                    context.put("informationSystemName", informationSystemName);
+
+                    context.put("pemCertificate", pemCertificate);
+
+                    context.put("pemPrivateKey", pemPrivateKey);
+                }
 
                 SOAPElement messageIDElem = (SOAPElement) XmlHelper.selectSingleNode(soapHeader, "//*[local-name()='MessageID']");
 
@@ -129,21 +143,30 @@ public class SOAPMessageSigner implements SOAPHandler<SOAPMessageContext> {
                 /* добавление элемента для указания идентификатора сообщения */
                 addingMessageIdElement(soapHeader);
 
-                /* добавление элемента для указания идентификатора системы */
-                addingClientEntityIdElement(soapHeader);
+                if(!StringUtils.isEmpty(informationSystemName)) {
 
-                /* добавление блока элементов для указания ЭП */
-                addingSignatureElements(soapEnvelope, soapHeader);
+                    /* добавление элемента для указания идентификатора системы */
+                    addingClientEntityIdElement(soapHeader);
 
-                // Делаем такое преобразование, чтобы не поломался в последующем хэш для Body
-                resetSOAPPartContent(message);
+                    /* добавление блока элементов для указания ЭП */
+                    addingSignatureElements(soapEnvelope, soapHeader);
 
-                /* проставление в элементе DigestValue расчитанную хеш-сумму блока с бизнес-данными запроса */
-                SOAPElement digestValueElem = (SOAPElement) XmlHelper.selectSingleNode(message.getSOAPHeader(), "//*[local-name()='DigestValue']");
-                genericDigestValue(message.getSOAPBody(), digestValueElem);
+                    // Делаем такое преобразование, чтобы не поломался в последующем хэш для Body
+                    resetSOAPPartContent(message);
 
-                /* подписание ЭП-ОВ */
-                signDigestValue(message.getSOAPBody());
+                    /* проставление в элементе DigestValue расчитанную хеш-сумму блока с бизнес-данными запроса */
+                    SOAPElement digestValueElem = (SOAPElement) XmlHelper.selectSingleNode(message.getSOAPHeader(), "//*[local-name()='DigestValue']");
+                    genericDigestValue(message.getSOAPBody(), digestValueElem);
+
+                    /* подписание ЭП-ОВ */
+                    signDigestValue(message.getSOAPBody());
+
+                } else if(messageType == SOAPMessageType.SEND_RESPONSE_RESPONSE) {
+
+                    final String egiszRespMessageId = (String)context.get("egiszRespMessageId");
+
+                    logger.warn("MEDORG. sendDocument-запрос для id принятого сообщения {} не был отправлен данным адаптером, поэтому невозможно подписать sendResponseResponse-запрос {}", egiszRespMessageId, XmlHelper.elementToString(soapPart.getDocumentElement()) );
+                }
             }
 
             if (logger.isDebugEnabled()) {
@@ -277,6 +300,7 @@ public class SOAPMessageSigner implements SOAPHandler<SOAPMessageContext> {
             authInfoElement.addChildElement(clientEntityIdElement);
 
             transportHeaderElement.addChildElement(authInfoElement);
+
         } catch (SOAPException ex) {
             throw new RuntimeException("Не удалось добавить элемент для указания идентификатора системы.", ex);
         }
