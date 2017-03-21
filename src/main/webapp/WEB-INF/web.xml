@@ -6,6 +6,30 @@
 
     <distributable/>
 
+    <listener>
+        <listener-class>liquibase.integration.servlet.LiquibaseServletListener</listener-class>
+    </listener>
+
+    <context-param>
+        <param-name>liquibase.changelog</param-name>
+        <param-value>liquibase/db/db.changelog.xml</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>liquibase.datasource</param-name>
+        <param-value>jdbc/medorg_adapter</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>liquibase.onerror.fail</param-name>
+        <param-value>true</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>liquibase.contexts</param-name>
+        <param-value>production</param-value>
+    </context-param>
+
     <security-constraint>
         <web-resource-collection>
             <web-resource-name>All rest resources</web-resource-name>

@@ -8,10 +8,7 @@ public class ConsumerRelate {
 
     private final String pemPrivateKey;
 
-    private final String authorizedUserName;
-
-    public ConsumerRelate(String authorizedUserName, String informationSystemName, String pemCertificate, String pemPrivateKey){
-        this.authorizedUserName=authorizedUserName;
+    public ConsumerRelate(String informationSystemName, String pemCertificate, String pemPrivateKey){
         this.informationSystemName=informationSystemName;
         this.pemCertificate=pemCertificate;
         this.pemPrivateKey=pemPrivateKey;
@@ -27,9 +24,5 @@ public class ConsumerRelate {
 
     public String getPemPrivateKey() {
         return pemPrivateKey;
-    }
-
-    public String getAuthorizedUserName() {
-        return authorizedUserName;
     }
 }

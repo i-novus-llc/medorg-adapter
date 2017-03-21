@@ -7,13 +7,16 @@ import java.io.Serializable;
  */
 public class ResponseCommand implements Serializable {
 
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
+
+    private final String messageId;
 
     private final String oid;
 
     private final String response;
 
-    public ResponseCommand(String oid, String response) {
+    ResponseCommand(String messageId, String oid, String response) {
+        this.messageId = messageId;
         this.oid = oid;
         this.response = response;
     }
@@ -24,5 +27,9 @@ public class ResponseCommand implements Serializable {
 
     public String getResponse() {
         return response;
+    }
+
+    public String getMessageId() {
+        return messageId;
     }
 }

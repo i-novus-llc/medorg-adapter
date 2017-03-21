@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="create_message_queue" author="inovus" dbms="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="message_queue"/>
+            </not>
+        </preConditions>
+        <createTable tableName="message_queue" remarks="Очередь сообщений">
+            <column name="id" remarks="Идентификатор сообщения" type="varchar">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="consumer" remarks="Пользователь, отправивший сообщение" type="varchar">
+                <constraints nullable="false"/>
+            </column>
+            <column name="callback_url" remarks="URL для отправки ответа" type="varchar">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message_date" remarks="Дата создания сообщения" type="timestamp" defaultValueDate="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create_message_queue_deleted" author="inovus" dbms="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="message_queue" columnName="deleted"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="message_queue">
+            <column name="deleted" type="timestamp"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
